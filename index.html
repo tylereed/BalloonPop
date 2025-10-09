@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Spelling Game</title>
+    <script src="https://cdn.jsdelivr.net/gh/pjdeveloper896/TSNova@latest/dist/ts-runtime.min.js"></script>
+    <script src="./game.ts" type="text/typescript"></script>
+  </head>
+  <body>
+    <canvas id="gameArea" width="1024" height="768" />
+
+    <script type="text/typescript">
+const wordList = ["rolled", "finger", "except", "speed", "couldn’t", "eleven", "catch", "itself", "stolen", "button", "bargain", "certain", "orphan", "opinion", "oxen", "latitude", "longitude", "compass", "absolute", "equator"];
+
+const width = 1024;
+const height = 768;
+
+const balloonWidth = 75;
+const balloonHeight = 100;
+
+const tau = Math.PI * 2;
+
+function getMisspelled(word: string): string {
+  return "farts";
+}
+
+function start() {
+  const gameArea = document.getElementById("gameArea") as HTMLCanvasElement | null;
+  if (!gameArea) {
+    console.error("No 'gameArea' canvas found.  Exiting.");
+    return;
+  }
+
+  console.log("Loaded canvas");
+
+  const ctx = gameArea?.getContext("2d");
+  if (!ctx) {
+    console.error("Could not create drawing context");
+    return;
+  }
+
+  ctx.fillStyle = "lightblue";
+  ctx.fillRect(0, 0, width, height);
+
+  const balloonXOffset = width / 5;
+  const balloonY = height / 2;
+
+  const misspelledIndex = Math.floor(Math.random() * 5);
+
+  //ctx.beginPath();
+  //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
+  //ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const x = (i + 0.5) * balloonXOffset;
+
+    //ctx.moveTo(x, balloonY);
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.ellipse(x, balloonY, balloonWidth, balloonHeight, 0, 0, tau);
+    ctx.fill();
+    ctx.stroke();
+
+    const word = misspelledIndex == i ?
+      getMisspelled(wordList[i]) :
+      wordList[i];
+
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.font = "28px serif";
+    ctx.fillText(word, x, balloonY);
+  }
+}
+
+start();
+    </script>
+  </body>
+</html>
