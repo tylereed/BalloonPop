@@ -1,10 +1,21 @@
+interface Balloon {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  word: string;
+  isMisspelled: boolean;
+}
+
+let score = 0;
+
 const wordList = ["rolled", "finger", "except", "speed", "couldn’t", "eleven", "catch", "itself", "stolen", "button", "bargain", "certain", "orphan", "opinion", "oxen", "latitude", "longitude", "compass", "absolute", "equator"];
 
 const width = 1024;
 const height = 768;
 
-const balloonWidth = 50;
-const balloonHeight = 75;
+const balloonWidth = 75;
+const balloonHeight = 100;
 
 const tau = Math.PI * 2;
 
@@ -12,42 +23,179 @@ function getMisspelled(word: string): string {
   return "farts";
 }
 
+function isClicked(click: { x: number, y: number }, balloon: Balloon) {
+  const mX = balloon.x;
+  const mY = balloon.y;
+  const sigmaX = balloon.width;
+  const sigmaY = balloon.height;
+
+  const xDiff = click.x - mX;
+  const yDiff = click.y - mY;
+
+  const r = (xDiff * xDiff) / (sigmaX * sigmaX) + (yDiff * yDiff) / (sigmaY * sigmaY);
+  console.log("Distance: " + r);
+  return r < 1;
+}
+
+function initBalloons(balloonCount: number) {
+  const balloonXOffset = width / 5;
+  const balloonY = height / 2;
+  const balloons: Balloon[] = [];
+  const misspelledIndex = Math.floor(Math.random() * balloonCount);
+  for (let i = 0; i < balloonCount; i++) {
+    const x = (i + 0.5) * balloonXOffset;
+
+    balloons.push({
+      x: x,
+      y: balloonY,
+      width: balloonWidth,
+      height: balloonHeight,
+      word: "",
+      isMisspelled: false
+    });
+  }
+
+  return balloons;
+}
+
+function shuffle(words: string[]): string[] {
+  const result = [...words];
+  let i = result.length;
+  while (0 !== i) {
+    let j = Math.floor(Math.random() * i);
+    i--;
+    let temp = result[i];
+    result[i] = result[j];
+    result[j] = temp;
+  }
+  return result;
+}
+
+function setWords(balloons: Balloon[], words: string[]): void {
+  const w = words.splice(0, balloons.length);
+  for (let i = 0; i < balloons.length; i++) {
+    balloons[i].word = w[i];
+    balloons[i].isMisspelled = false;
+  }
+}
+
+function misspellWord(balloons: Balloon[]) {
+  const i = Math.floor(Math.random() * balloons.length);
+  const correct = balloons[i].word;
+  balloons[i].word = getMisspelled(correct);
+  balloons[i].isMisspelled = true;
+  return correct;
+}
+
 function start() {
+  let displayCorrect = false;
+  let correctWord = "";
+
+  function setDisplayCorrect() {
+    displayCorrect = true;
+  }
+
+  function newRound() {
+    setWords(balloons, words);
+    correctWord = misspellWord(balloons);
+    displayCorrect = false;
+    draw();
+  }
+
   const gameArea = document.getElementById("gameArea") as HTMLCanvasElement | null;
   if (!gameArea) {
     console.error("No 'gameArea' canvas found.  Exiting.");
     return;
   }
-
   console.log("Loaded canvas");
 
-  const ctx = gameArea?.getContext("2d");
-  if (!ctx) {
-    console.error("Could not create drawing context");
-    return;
-  }
+  const words = shuffle(wordList);
 
-  ctx.fillStyle = "lightblue";
-  ctx.fillRect(0, 0, width, height);
+  const balloons = initBalloons(5);
+  newRound();
 
-  const balloonXOffset = width / 6;
-  const balloonY = height / 2;
+  let clickedX = -100;
+  let clickedY = -100;
+  let clickedIndex: number | null = null;
 
-  ctx.fillStyle = "red";
-  //ctx.beginPath();
-  //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
-  //ctx.stroke();
-  for (let i = 0; i < 5; i++) {
-    const x = (i + 1) * balloonXOffset;
+  gameArea.addEventListener("click", (event) => {
+    if (displayCorrect) return;
+    console.log(`Click {x: ${event.x}, y: ${event.y}}`);
+    const rect = event.target.getBoundingClientRect();
+    const clicked = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
 
-    //ctx.moveTo(x, balloonY);
+    clickedX = clicked.x;
+    clickedY = clicked.y;
+    for (let i = 0; i < balloons.length; i++) {
+      const balloon = balloons[i];
+      if (isClicked(clicked, balloon)) {
+        clickedIndex = i;
+        console.log(`clicked balloon: ${i}`);
+        if (balloon.isMisspelled) {
+          score++;
+        }
+        displayCorrect = true;
+        setTimeout(() => newRound(), 5000);
+        break;
+      }
+      clickedIndex = null;
+    }
+    draw();
+  });
+
+  function draw() {
+    const ctx = gameArea?.getContext("2d");
+    if (!ctx) {
+      console.error("Could not create drawing context");
+      return;
+    }
+
+    console.log("drawing");
+    ctx.fillStyle = "lightblue";
+    ctx.fillRect(0, 0, width, height);
+
+    //ctx.beginPath();
+    //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
+    //ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    for (let balloon of balloons) {
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.ellipse(balloon.x, balloon.y, balloon.width, balloon.height, 0, 0, tau);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "black";
+      ctx.font = "28px serif";
+      if (displayCorrect) {
+        if (balloon.isMisspelled) {
+          ctx.fillText(correctWord, balloon.x, balloon.y);
+        }
+      } else {
+        ctx.fillText(balloon.word, balloon.x, balloon.y);
+      }
+    }
+
     ctx.beginPath();
-    ctx.ellipse(x, balloonY, balloonWidth, balloonHeight, 0, 0, tau);
-    ctx.fill();
-    ctx.stroke();
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(`Score: ${score}`, 5, 7);
 
-    ctx.strokeText(wordList[i], x, balloony);
+    // if (clickedIndex != null && clickedIndex > -1) {
+    //   ctx.fillText(clickedIndex + "", 100, 100);
+    // }
+
+    // ctx.beginPath();
+    // ctx.fillStyle = "purple";
+    // ctx.ellipse(clickedX, clickedY, 10, 10, 0, 0, tau);
+    // ctx.fill();
   }
+
+  draw();
 }
 
 start();
