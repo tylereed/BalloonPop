@@ -1,15 +1,6 @@
-interface Balloon {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  word: string;
-  isMisspelled: boolean;
-}
+import { Balloon, Game, GameSession } from "./gameSession";
 
-let score = 0;
-
-const wordList = ["rolled", "finger", "except", "speed", "couldn’t", "eleven", "catch", "itself", "stolen", "button", "bargain", "certain", "orphan", "opinion", "oxen", "latitude", "longitude", "compass", "absolute", "equator"];
+const wordList: readonly string[] = ["rolled", "finger", "except", "speed", "couldn’t", "eleven", "catch", "itself", "stolen", "button", "bargain", "certain", "orphan", "opinion", "oxen", "latitude", "longitude", "compass", "absolute", "equator"];
 
 const width = 1024;
 const height = 768;
@@ -19,9 +10,6 @@ const balloonHeight = 100;
 
 const tau = Math.PI * 2;
 
-function getMisspelled(word: string): string {
-  return "farts";
-}
 
 function isClicked(click: { x: number, y: number }, balloon: Balloon) {
   const mX = balloon.x;
@@ -37,70 +25,7 @@ function isClicked(click: { x: number, y: number }, balloon: Balloon) {
   return r < 1;
 }
 
-function initBalloons(balloonCount: number) {
-  const balloonXOffset = width / 5;
-  const balloonY = height / 2;
-  const balloons: Balloon[] = [];
-  const misspelledIndex = Math.floor(Math.random() * balloonCount);
-  for (let i = 0; i < balloonCount; i++) {
-    const x = (i + 0.5) * balloonXOffset;
-
-    balloons.push({
-      x: x,
-      y: balloonY,
-      width: balloonWidth,
-      height: balloonHeight,
-      word: "",
-      isMisspelled: false
-    });
-  }
-
-  return balloons;
-}
-
-function shuffle(words: string[]): string[] {
-  const result = [...words];
-  let i = result.length;
-  while (0 !== i) {
-    let j = Math.floor(Math.random() * i);
-    i--;
-    let temp = result[i];
-    result[i] = result[j];
-    result[j] = temp;
-  }
-  return result;
-}
-
-function setWords(balloons: Balloon[], words: string[]): void {
-  const w = words.splice(0, balloons.length);
-  for (let i = 0; i < balloons.length; i++) {
-    balloons[i].word = w[i];
-    balloons[i].isMisspelled = false;
-  }
-}
-
-function misspellWord(balloons: Balloon[]) {
-  const i = Math.floor(Math.random() * balloons.length);
-  const correct = balloons[i].word;
-  balloons[i].word = getMisspelled(correct);
-  balloons[i].isMisspelled = true;
-  return correct;
-}
-
-function start() {
-  let displayCorrect = false;
-  let correctWord = "";
-
-  function setDisplayCorrect() {
-    displayCorrect = true;
-  }
-
-  function newRound() {
-    setWords(balloons, words);
-    correctWord = misspellWord(balloons);
-    displayCorrect = false;
-    draw();
-  }
+export function start() {
 
   const gameArea = document.getElementById("gameArea") as HTMLCanvasElement | null;
   if (!gameArea) {
@@ -109,93 +34,116 @@ function start() {
   }
   console.log("Loaded canvas");
 
-  const words = shuffle(wordList);
+  const game = new Game(wordList, {
+    balloonCount: 5,
+    balloonWidth: balloonWidth,
+    balloonHeight: balloonHeight,
+    gameWidth: width,
+    gameHeight: height
+  });
+  let gameSession = game.buildGameSession();
+  gameSession.init();
 
-  const balloons = initBalloons(5);
-  newRound();
-
-  let clickedX = -100;
-  let clickedY = -100;
-  let clickedIndex: number | null = null;
+  // let clickedX = -100;
+  // let clickedY = -100;
+  // let clickedIndex: number | null = null;
 
   gameArea.addEventListener("click", (event) => {
-    if (displayCorrect) return;
+    if (gameSession.gameOver) {
+      gameSession = game.buildGameSession();
+      gameSession.init();
+      draw(gameArea, gameSession);
+      return;
+    }
+
+    if (gameSession.displayCorrect) return;
+
     console.log(`Click {x: ${event.x}, y: ${event.y}}`);
-    const rect = event.target.getBoundingClientRect();
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
     const clicked = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top
     };
 
-    clickedX = clicked.x;
-    clickedY = clicked.y;
-    for (let i = 0; i < balloons.length; i++) {
-      const balloon = balloons[i];
+    // clickedX = clicked.x;
+    // clickedY = clicked.y;
+    for (let i = 0; i < gameSession.balloons.length; i++) {
+      const balloon = gameSession.balloons[i];
       if (isClicked(clicked, balloon)) {
-        clickedIndex = i;
+        // clickedIndex = i;
         console.log(`clicked balloon: ${i}`);
         if (balloon.isMisspelled) {
-          score++;
+          gameSession.score++;
         }
-        displayCorrect = true;
-        setTimeout(() => newRound(), 5000);
+        gameSession.setDisplayCorrect();
+        setTimeout(() => {
+          gameSession.newRound();
+          draw(gameArea, gameSession);
+        }, 4000);
         break;
       }
-      clickedIndex = null;
+      // clickedIndex = null;
     }
-    draw();
+    draw(gameArea, gameSession);
   });
 
-  function draw() {
-    const ctx = gameArea?.getContext("2d");
-    if (!ctx) {
-      console.error("Could not create drawing context");
-      return;
-    }
-
-    console.log("drawing");
-    ctx.fillStyle = "lightblue";
-    ctx.fillRect(0, 0, width, height);
-
-    //ctx.beginPath();
-    //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
-    //ctx.stroke();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    for (let balloon of balloons) {
-      ctx.fillStyle = "red";
-      ctx.beginPath();
-      ctx.ellipse(balloon.x, balloon.y, balloon.width, balloon.height, 0, 0, tau);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "black";
-      ctx.font = "28px serif";
-      if (displayCorrect) {
-        if (balloon.isMisspelled) {
-          ctx.fillText(correctWord, balloon.x, balloon.y);
-        }
-      } else {
-        ctx.fillText(balloon.word, balloon.x, balloon.y);
-      }
-    }
-
-    ctx.beginPath();
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(`Score: ${score}`, 5, 7);
-
-    // if (clickedIndex != null && clickedIndex > -1) {
-    //   ctx.fillText(clickedIndex + "", 100, 100);
-    // }
-
-    // ctx.beginPath();
-    // ctx.fillStyle = "purple";
-    // ctx.ellipse(clickedX, clickedY, 10, 10, 0, 0, tau);
-    // ctx.fill();
-  }
-
-  draw();
+  draw(gameArea, gameSession);
 }
 
-start();
+function draw(gameArea: HTMLCanvasElement, session: GameSession) {
+  const ctx = gameArea?.getContext("2d");
+  if (!ctx) {
+    console.error("Could not create drawing context");
+    return;
+  }
+
+  console.log("drawing");
+  ctx.fillStyle = "lightblue";
+  ctx.fillRect(0, 0, width, height);
+
+  //ctx.beginPath();
+  //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
+  //ctx.stroke();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  for (let balloon of session.balloons) {
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.ellipse(balloon.x, balloon.y, balloon.width, balloon.height, 0, 0, tau);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "black";
+    ctx.font = "28px serif";
+    if (session.displayCorrect) {
+      if (balloon.isMisspelled) {
+        ctx.fillText(session.correctWord, balloon.x, balloon.y);
+      }
+    } else {
+      ctx.fillText(balloon.word, balloon.x, balloon.y);
+    }
+  }
+
+  ctx.beginPath();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(`Score: ${session.score}`, 5, 7);
+
+  if (session.gameOver) {
+    ctx.beginPath();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "56px serif";
+
+    ctx.beginPath();
+    ctx.fillText("Game Over.\r\nClick anywhere to start again", width / 2, height / 5);
+  }
+  // if (clickedIndex != null && clickedIndex > -1) {
+  //   ctx.fillText(clickedIndex + "", 100, 100);
+  // }
+
+  // ctx.beginPath();
+  // ctx.fillStyle = "purple";
+  // ctx.ellipse(clickedX, clickedY, 10, 10, 0, 0, tau);
+  // ctx.fill();
+}
