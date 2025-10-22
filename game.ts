@@ -1,149 +1,162 @@
-import { Balloon, Game, GameSession } from "./gameSession";
+import { loadDictionary } from "./misspellings";
+import { randomEntry } from "./utils";
 
-const wordList: readonly string[] = ["rolled", "finger", "except", "speed", "couldn’t", "eleven", "catch", "itself", "stolen", "button", "bargain", "certain", "orphan", "opinion", "oxen", "latitude", "longitude", "compass", "absolute", "equator"];
+let getAllMisspellings: (baseWord: string) => string[];
 
-const width = 1024;
-const height = 768;
-
-const balloonWidth = 75;
-const balloonHeight = 100;
-
-const tau = Math.PI * 2;
-
-
-function isClicked(click: { x: number, y: number }, balloon: Balloon) {
-  const mX = balloon.x;
-  const mY = balloon.y;
-  const sigmaX = balloon.width;
-  const sigmaY = balloon.height;
-
-  const xDiff = click.x - mX;
-  const yDiff = click.y - mY;
-
-  const r = (xDiff * xDiff) / (sigmaX * sigmaX) + (yDiff * yDiff) / (sigmaY * sigmaY);
-  console.log("Distance: " + r);
-  return r < 1;
+export interface Balloon {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  word: string;
+  isMisspelled: boolean;
+  draw: boolean;
 }
 
-export function start() {
-
-  const gameArea = document.getElementById("gameArea") as HTMLCanvasElement | null;
-  if (!gameArea) {
-    console.error("No 'gameArea' canvas found.  Exiting.");
-    return;
-  }
-  console.log("Loaded canvas");
-
-  const game = new Game(wordList, {
-    balloonCount: 5,
-    balloonWidth: balloonWidth,
-    balloonHeight: balloonHeight,
-    gameWidth: width,
-    gameHeight: height
-  });
-  let gameSession = game.buildGameSession();
-  gameSession.init();
-
-  // let clickedX = -100;
-  // let clickedY = -100;
-  // let clickedIndex: number | null = null;
-
-  gameArea.addEventListener("click", (event) => {
-    if (gameSession.gameOver) {
-      gameSession = game.buildGameSession();
-      gameSession.init();
-      draw(gameArea, gameSession);
-      return;
-    }
-
-    if (gameSession.displayCorrect) return;
-
-    console.log(`Click {x: ${event.x}, y: ${event.y}}`);
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    const clicked = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-
-    // clickedX = clicked.x;
-    // clickedY = clicked.y;
-    for (let i = 0; i < gameSession.balloons.length; i++) {
-      const balloon = gameSession.balloons[i];
-      if (isClicked(clicked, balloon)) {
-        // clickedIndex = i;
-        console.log(`clicked balloon: ${i}`);
-        if (balloon.isMisspelled) {
-          gameSession.score++;
-        }
-        gameSession.setDisplayCorrect();
-        setTimeout(() => {
-          gameSession.newRound();
-          draw(gameArea, gameSession);
-        }, 4000);
-        break;
-      }
-      // clickedIndex = null;
-    }
-    draw(gameArea, gameSession);
-  });
-
-  draw(gameArea, gameSession);
+export interface GameProps {
+  readonly balloonCount: number;
+  readonly balloonWidth: number;
+  readonly balloonHeight: number;
+  readonly gameWidth: number;
+  readonly gameHeight: number;
 }
 
-function draw(gameArea: HTMLCanvasElement, session: GameSession) {
-  const ctx = gameArea?.getContext("2d");
-  if (!ctx) {
-    console.error("Could not create drawing context");
-    return;
+function* chunk<T>(items: readonly T[], chunkSize: number) {
+  const _items = [...items];
+  while (_items.length) {
+    yield _items.splice(0, chunkSize);
+  }
+}
+
+function shuffle(words: readonly string[]): string[] {
+  const result = [...words];
+  let i = result.length;
+  while (0 !== i) {
+    let j = Math.floor(Math.random() * i);
+    i--;
+    let temp = result[i];
+    result[i] = result[j];
+    result[j] = temp;
+  }
+  return result;
+}
+
+export class Game {
+  #wordList: readonly string[];
+  #gameProps: GameProps;
+  constructor(wordList: readonly string[], props: GameProps) {
+    this.#wordList = [...wordList];
+    this.#gameProps = props;
   }
 
-  console.log("drawing");
-  ctx.fillStyle = "lightblue";
-  ctx.fillRect(0, 0, width, height);
+  public buildGameSession(): GameSession {
+    const allWords = shuffle(this.#wordList);
+    const wordLists = [...chunk(allWords, this.#gameProps.balloonCount)];
+    return new GameSession(wordLists, this.#gameProps);
+  }
+}
 
-  //ctx.beginPath();
-  //ctx.ellipse(50, 50, 25, 25, 0, 0, tau);
-  //ctx.stroke();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-  for (let balloon of session.balloons) {
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.ellipse(balloon.x, balloon.y, balloon.width, balloon.height, 0, 0, tau);
-    ctx.fill();
-    ctx.stroke();
+function initBalloons(props: GameProps) {
+  const { balloonCount, gameWidth, gameHeight, balloonWidth, balloonHeight } = { ...props };
 
-    ctx.fillStyle = "black";
-    ctx.font = "28px serif";
-    if (session.displayCorrect) {
-      if (balloon.isMisspelled) {
-        ctx.fillText(session.correctWord, balloon.x, balloon.y);
-      }
+  const balloonXOffset = gameWidth / 5;
+  const balloonY = gameHeight / 2;
+  const balloons: Balloon[] = [];
+
+  for (let i = 0; i < balloonCount; i++) {
+    const x = (i + 0.5) * balloonXOffset;
+
+    balloons.push({
+      x: x,
+      y: balloonY,
+      width: balloonWidth,
+      height: balloonHeight,
+      word: "",
+      isMisspelled: false,
+      draw: false
+    });
+  }
+
+  return balloons;
+}
+
+function getMisspelled(word: string): string {
+  const misspelled = getAllMisspellings(word);
+  return randomEntry(misspelled);
+}
+
+function setWords(balloons: readonly Balloon[], words: string[]): void {
+  const w = words.splice(0, balloons.length);
+  for (let i = 0; i < w.length; i++) {
+    balloons[i].word = w[i];
+    balloons[i].isMisspelled = false;
+    balloons[i].draw = true;
+  }
+  for (let i = w.length; i < balloons.length; i++) {
+    balloons[i].draw = false;
+  }
+}
+
+function misspellWord(balloons: readonly Balloon[]) {
+  const i = Math.floor(Math.random() * balloons.length);
+  const correct = balloons[i].word;
+  balloons[i].word = getMisspelled(correct);
+  balloons[i].isMisspelled = true;
+  return correct;
+}
+
+export async function loadGame(wordList: readonly string[], props: GameProps) {
+  getAllMisspellings = await loadDictionary();
+  return new Game(wordList, props);
+}
+
+export class GameSession {
+  #words: string[][];
+  #round: number;
+  #balloons: readonly Balloon[];
+  #displayCorrect: boolean;
+  #correctWord: string;
+  #gameOver: boolean;
+  #score: number;
+
+  constructor(words: string[][], props: GameProps) {
+    this.#words = words.map(x => [...x]);
+    this.#round = 0;
+    this.#balloons = initBalloons(props);
+    this.#displayCorrect = false;
+    this.#correctWord = "";
+    this.#gameOver = false;
+    this.#score = 0;
+  }
+
+  get balloons() { return this.#balloons.filter(b => b.draw) };
+  get displayCorrect() { return this.#displayCorrect };
+  get correctWord() { return this.#correctWord };
+  get gameOver() { return this.#gameOver };
+  get score() { return this.#score };
+  set score(value: number) { this.#score = value };
+
+  #resetBalloons() {
+    setWords(this.#balloons, this.#words[this.#round]);
+    this.#correctWord = misspellWord(this.#balloons);
+    this.#displayCorrect = false;
+  }
+
+  init() {
+    this.#score = 0;
+    this.#resetBalloons();
+  }
+
+  setDisplayCorrect() {
+    this.#displayCorrect = true;
+  }
+
+  newRound() {
+    this.#round++;
+    if (this.#round < this.#words.length) {
+      this.#resetBalloons();
     } else {
-      ctx.fillText(balloon.word, balloon.x, balloon.y);
+      this.#gameOver = true;
     }
   }
-
-  ctx.beginPath();
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(`Score: ${session.score}`, 5, 7);
-
-  if (session.gameOver) {
-    ctx.beginPath();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "56px serif";
-
-    ctx.beginPath();
-    ctx.fillText("Game Over.\r\nClick anywhere to start again", width / 2, height / 5);
-  }
-  // if (clickedIndex != null && clickedIndex > -1) {
-  //   ctx.fillText(clickedIndex + "", 100, 100);
-  // }
-
-  // ctx.beginPath();
-  // ctx.fillStyle = "purple";
-  // ctx.ellipse(clickedX, clickedY, 10, 10, 0, 0, tau);
-  // ctx.fill();
 }
