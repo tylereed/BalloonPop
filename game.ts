@@ -60,7 +60,7 @@ function initBalloons(props: GameProps) {
   const { balloonCount, gameWidth, gameHeight, balloonWidth, balloonHeight } = { ...props };
 
   const balloonXOffset = gameWidth / 5;
-  const balloonY = gameHeight / 2;
+  const balloonY = gameHeight / 2 - balloonHeight / 2;
   const balloons: Balloon[] = [];
 
   for (let i = 0; i < balloonCount; i++) {
