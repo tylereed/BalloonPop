@@ -3,8 +3,8 @@ import { Balloon, loadGame } from "./game";
 
 const wordList: readonly string[] = ["aloud", "bald", "hawk", "south", "faucet", "proud", "claw", "tower", "stalk", "couple", "howl", "false", "dawn", "allow", "drown", "pause", "fault", "cause", "amount", "cloudier", "author", "sprawl", "ounce", "coward"];
 
-const balloonWidth = 75;
-const balloonHeight = 100;
+const balloonWidth = 100;
+const balloonHeight = 125;
 
 function isClicked(click: { x: number, y: number }, balloon: Balloon) {
   const mX = balloon.x;
