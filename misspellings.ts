@@ -1,8 +1,10 @@
 import Typo from "typo-js";
 import { randomEntry, randomInterval } from "./utils";
 
-import "url:./dictionaries/en_US/en_US.dic";
-import "url:./dictionaries/en_US/en_US.aff";
+//@ts-ignore parcel resolves correctly
+import enUSDic from "url:./dictionaries/en_US/en_US.dic";
+//@ts-ignore parcel resolves correctly
+import enUSAff from "url:./dictionaries/en_US/en_US.aff";
 
 type ReadOnlyArrayOfArrays<T> = readonly (readonly T[])[];
 
@@ -30,12 +32,15 @@ const substitutions: ReadOnlyArrayOfArrays<string> = [
 
 const vowels = ["a", "e", "i", "o", "u"];
 
-const dictionary = new Typo("en_US", null, null, { dictionaryPath: "dictionaries", asyncLoad: true });
+let dictionary: Typo; // = new Typo("en_US", null, null, { dictionaryPath: "dictionaries", asyncLoad: true }); //enUSDic, enUSAff); //, { dictionaryPath: "dictionaries", asyncLoad: true });
 
 export async function loadDictionary() {
-  while (!dictionary.loaded) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  const dic = await (await fetch(enUSDic)).text();
+  const aff = await (await fetch(enUSAff)).text();
+  dictionary = new Typo("en_US", aff, dic);
+  // while (!dictionary.loaded) {
+  //   await new Promise(resolve => setTimeout(resolve, 100));
+  // }
   return getAllMisspellings;
 }
 
