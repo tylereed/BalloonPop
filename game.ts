@@ -138,7 +138,7 @@ export class GameSession {
 
   #resetBalloons() {
     setWords(this.#balloons, this.#words[this.#round]);
-    this.#correctWord = misspellWord(this.#balloons);
+    this.#correctWord = misspellWord(this.balloons);
     this.#displayCorrect = false;
   }
 
