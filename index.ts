@@ -1,7 +1,7 @@
 import draw from "./draw";
 import { Balloon, loadGame } from "./game";
 
-const wordList: readonly string[] = ["spark", "prepare", "cheer", "tear", "scarf", "scare", "repair", "earring", "scarce", "weird", "sharp", "repair", "spare", "gear", "hairy", "compare", "alarm", "harsh", "upstairs", "square", "aware", "pardon", "career", "weary"];
+const wordList: readonly string[] = ["steel", "steal", "aloud", "allowed", "lesson", "lessen", "who's", "whose", "manor", "manner", "pedal", "peddle", "berry", "bury", "hanger", "hangar", "overdo", "overdue", "rain", "reign", "principle", "principal", "stationary", "stationery"];
 
 const balloonWidth = 100;
 const balloonHeight = 125;
