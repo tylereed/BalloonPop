@@ -1,11 +1,11 @@
-import { Balloon, GameSession } from "./game";
+import { Balloon, GameSession, GameState } from "./game";
 
 function sech(theta: number): number {
   return 1 / Math.cosh(theta);
 }
 
 function sechRadius(theta: number) {
-  return 1 + 0.375 * sech(3.5 * theta)
+  return 1 + 0.375 * sech(3.5 * theta);
 }
 
 function calculateHeight(theta: number, radius: number, height: number) {
@@ -67,6 +67,18 @@ export default function draw(gameArea: HTMLCanvasElement, session: GameSession) 
   ctx.fillStyle = "lightblue";
   ctx.fillRect(0, 0, gameArea.width, gameArea.height);
 
+  if (session.state === GameState.StartScreen) {
+    ctx.beginPath();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "56px serif";
+    ctx.fillStyle = "black";
+
+    ctx.beginPath();
+    ctx.fillText("Balloon Pop.\r\nClick anywhere to start", gameArea.width / 2, gameArea.height / 5);
+    return;
+  }
+
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   for (let balloon of session.balloons) {
@@ -88,11 +100,11 @@ export default function draw(gameArea: HTMLCanvasElement, session: GameSession) 
 
     ctx.fillStyle = "black";
     ctx.font = "28px serif";
-    if (session.displayCorrect) {
+    if (session.state === GameState.DisplayCorrect) {
       if (balloon.isMisspelled) {
         ctx.fillText(session.correctWord, balloon.x, balloon.y);
       }
-    } else {
+    } else if (session.state === GameState.Choose) {
       ctx.fillText(balloon.word, balloon.x, balloon.y);
     }
   }
@@ -102,7 +114,7 @@ export default function draw(gameArea: HTMLCanvasElement, session: GameSession) 
   ctx.textBaseline = "top";
   ctx.fillText(`Score: ${session.score}`, 5, 7);
 
-  if (session.gameOver) {
+  if (session.state === GameState.GameOver) {
     ctx.beginPath();
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";

@@ -1,5 +1,5 @@
 import draw from "./draw";
-import { Balloon, loadGame } from "./game";
+import { Balloon, Game, GameSession, GameState, loadGame } from "./game";
 
 const wordList: readonly string[] = ["steel", "steal", "aloud", "allowed", "lesson", "lessen", "who's", "whose", "manor", "manner", "pedal", "peddle", "berry", "bury", "hanger", "hangar", "overdo", "overdue", "rain", "reign", "principle", "principal", "stationary", "stationery"];
 
@@ -44,44 +44,65 @@ export async function start() {
   gameSession.init();
 
   gameArea.addEventListener("click", (event) => {
-    if (gameSession.gameOver) {
-      gameSession = game.buildGameSession();
-      gameSession.init();
-      draw(gameArea, gameSession);
-      return;
-    }
-
-    if (gameSession.displayCorrect) return;
-
-    console.log(`Click {x: ${event.x}, y: ${event.y}}`);
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    const clicked = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-
-    for (let i = 0; i < gameSession.balloons.length; i++) {
-      const balloon = gameSession.balloons[i];
-      if (isClicked(clicked, balloon)) {
-
-        console.log(`clicked balloon: ${i}`);
-        if (balloon.isMisspelled) {
-          gameSession.score++;
-        }
-        gameSession.setDisplayCorrect();
-        setTimeout(() => {
-          gameSession.newRound();
-          draw(gameArea, gameSession);
-        }, 4000);
+    switch (gameSession.state) {
+      case GameState.StartScreen:
+        handleStartScreenClick(gameSession);
         break;
-      }
 
+      case GameState.Choose:
+        handleChooseClick(event, gameSession, gameArea);
+        break;
+
+      case GameState.DisplayCorrect:
+        return;
+
+      case GameState.GameOver:
+        gameSession = handleGameOverClick(game)
+        break;
     }
+
     draw(gameArea, gameSession);
   });
 
   draw(gameArea, gameSession);
   //generateAllMisspelled();
+}
+
+function handleStartScreenClick(gameSession: GameSession) {
+  gameSession.start();
+}
+
+function handleChooseClick(event: PointerEvent, gameSession: GameSession, gameArea: HTMLCanvasElement) {
+  console.log(`Click {x: ${event.x}, y: ${event.y}}`);
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  const clicked = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  };
+
+  for (let i = 0; i < gameSession.balloons.length; i++) {
+    const balloon = gameSession.balloons[i];
+    if (isClicked(clicked, balloon)) {
+
+      console.log(`clicked balloon: ${i}`);
+      if (balloon.isMisspelled) {
+        gameSession.score++;
+      }
+      gameSession.setDisplayCorrect();
+      setTimeout(() => {
+        gameSession.newRound();
+        draw(gameArea, gameSession);
+      }, 4000);
+      break;
+    }
+  }
+}
+
+function handleGameOverClick(game: Game) {
+  let gameSession = game.buildGameSession();
+  gameSession.init();
+  gameSession.start();
+  return gameSession;
 }
 
 // function generateAllMisspelled() {

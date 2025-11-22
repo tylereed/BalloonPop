@@ -110,53 +110,62 @@ export async function loadGame(wordList: readonly string[], props: GameProps) {
   return new Game(wordList, props);
 }
 
+export enum GameState {
+   StartScreen,
+   Choose,
+   DisplayCorrect,
+   GameOver
+}
+
 export class GameSession {
   #words: string[][];
   #round: number;
   #balloons: readonly Balloon[];
-  #displayCorrect: boolean;
   #correctWord: string;
-  #gameOver: boolean;
   #score: number;
+  #state: GameState;
 
   constructor(words: string[][], props: GameProps) {
     this.#words = words.map(x => [...x]);
     this.#round = 0;
     this.#balloons = initBalloons(props);
-    this.#displayCorrect = false;
     this.#correctWord = "";
-    this.#gameOver = false;
     this.#score = 0;
+    this.#state = GameState.StartScreen;
   }
 
   get balloons() { return this.#balloons.filter(b => b.draw) };
-  get displayCorrect() { return this.#displayCorrect };
   get correctWord() { return this.#correctWord };
-  get gameOver() { return this.#gameOver };
   get score() { return this.#score };
   set score(value: number) { this.#score = value };
+  get state() { return this.#state };
 
   #resetBalloons() {
     setWords(this.#balloons, this.#words[this.#round]);
     this.#correctWord = misspellWord(this.balloons);
-    this.#displayCorrect = false;
   }
 
   init() {
     this.#score = 0;
     this.#resetBalloons();
+    this.#state = GameState.StartScreen;
+  }
+
+  start() {
+    this.#state = GameState.Choose;
   }
 
   setDisplayCorrect() {
-    this.#displayCorrect = true;
+    this.#state = GameState.DisplayCorrect;
   }
 
   newRound() {
     this.#round++;
     if (this.#round < this.#words.length) {
       this.#resetBalloons();
+      this.#state = GameState.Choose;
     } else {
-      this.#gameOver = true;
+      this.#state = GameState.GameOver;
     }
   }
 }
